@@ -1,0 +1,49 @@
+<resources>
+    <style name="AppTheme" parent="Theme.Material3.Light.NoActionBar">
+        <item name="colorPrimary">@color/green_what</item>
+        <item name="android:windowDisablePreview">true</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <!--解决全屏的时候底部content和导航栏之间有一根白线的现象-->
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowBackground">@color/colorPrimary</item>
+        <!--状态栏文字白色-->
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+
+    <!--适配AlertDialog-->
+    <style name="AdaptAlertDialog" parent="Theme.AppCompat.Light.Dialog.Alert">
+        <!--message颜色-->
+        <item name="android:textColorPrimary">@color/black_text_comfortable</item>
+        <!--很奇怪，一个要用android一个不用-->
+        <item name="buttonBarPositiveButtonStyle">@style/PositiveButtonStyle.textColor</item>
+        <item name="buttonBarNeutralButtonStyle">@style/PositiveButtonStyle.textColor</item>
+        <item name="buttonBarNegativeButtonStyle">@style/NegativeButtonStyle.textColor</item>
+        <item name="android:windowMinWidthMinor">375dp</item>
+        <item name="windowMinWidthMinor">375dp</item>
+        <item name="windowFixedWidthMinor">375dp</item>
+    </style>
+
+    <style name="PositiveButtonStyle.textColor" parent="@style/Widget.AppCompat.Button.ButtonBar.AlertDialog">
+        <item name="android:textColor">@color/black_text</item>
+    </style>
+
+    <style name="NegativeButtonStyle.textColor" parent="@style/Widget.AppCompat.Button.ButtonBar.AlertDialog">
+        <item name="android:textColor">@color/gray_text_hint</item>
+    </style>
+
+    <style name="AdaptAlertDialogTest" parent="Theme.AppCompat.Light.Dialog.Alert">
+        <item name="android:background">@android:color/transparent</item>
+        <item name="colorPrimary">@android:color/transparent</item>
+        <item name="colorPrimaryDark">@android:color/transparent</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <!--message颜色-->
+        <item name="android:textColorPrimary">@color/black_text_comfortable</item>
+        <item name="android:buttonBarPositiveButtonStyle">@style/PositiveButtonStyle.textColor</item>
+        <item name="buttonBarNegativeButtonStyle">@style/NegativeButtonStyle.textColor</item>
+        <!-- Minor指竖屏模式下的宽度 -->
+        <item name="android:windowMinWidthMinor">1200dp</item>
+        <item name="windowMinWidthMinor">1200dp</item>
+        <item name="windowFixedWidthMinor">1200dp</item>
+    </style>
+</resources>

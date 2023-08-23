@@ -1,0 +1,128 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+    // 支持Kotlin注解，使用DataBinding要使用这个
+    id 'kotlin-kapt'
+    //id 'com.huawei.agconnect'
+}
+apply from: 'mvp.gradle'
+
+android {
+    namespace 'com.itant.rt'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.itant.rt.free"
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+
+        ndk {
+            abiFilters "armeabi-v7a", "arm64-v8a"
+        }
+
+        //resConfigs "en", "zh-rCN"
+    }
+
+    // 开启ViewBinding
+    viewBinding {
+        enabled = true
+    }
+
+    dataBinding {
+        enabled = true
+    }
+
+    signingConfigs {
+        config {
+            storeFile file('rt.jks')
+            storePassword "rt1234"
+            keyAlias "sz"
+            keyPassword "rt1234"
+            v1SigningEnabled true
+            v2SigningEnabled true
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.config
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+
+            buildConfigField("String", "BASE_URL", '"http://www.shuiliu520.com/wuji/"')
+        }
+        release {
+            signingConfig signingConfigs.config
+            // 是否可调试
+            debuggable false
+            // 开启混淆
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+
+            buildConfigField("String", "BASE_URL", '"http://www.shuiliu520.com/wuji/"')
+        }
+    }
+
+    // 设置apk文件名
+    android.applicationVariants.all { variant ->
+        variant.outputs.all {
+            outputFileName = "rt_v${defaultConfig.versionName}.apk"
+            switch (variant.getName()) {
+                case "debug":
+                    outputFileName = "rt_debug_v${defaultConfig.versionName}.apk"
+                    break
+                case "release":
+                    outputFileName = "rt_realease_v${defaultConfig.versionName}.apk"
+                    break
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    packagingOptions {
+        exclude 'META-INF/DEPENDENCIES'
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar','*.aar'])
+
+    implementation "androidx.core:core-ktx:1.10.1"
+    implementation "androidx.appcompat:appcompat:1.6.1"
+    implementation "com.google.android.material:material:1.9.0"
+
+    // 工具
+    implementation 'com.blankj:utilcodex:1.31.1'
+    implementation 'com.google.android.gms:play-services-basement:18.1.0'
+
+    // 内存泄漏检测
+    debugImplementation 'com.squareup.leakcanary:leakcanary-android:2.7'
+
+    // 通知栏显示请求，兼容 targetSdkVersion 31
+    debugImplementation "com.github.chuckerteam.chucker:library:3.5.2"
+    releaseImplementation "com.github.chuckerteam.chucker:library-no-op:3.5.2"
+
+    // MMKV
+    implementation 'com.tencent:mmkv-static:1.2.10'
+
+    // 推流和拉流、IM
+    implementation 'org.zeromq:jeromq:0.5.3'
+
+    // 适配器
+    implementation 'com.github.CymChad:BaseRecyclerViewAdapterHelper:3.0.11'
+
+    // bugly
+    implementation 'com.tencent.bugly:crashreport:latest.release'
+
+    // 生成二维码 https://gitee.com/jenly1314/ZXingLite
+    implementation 'com.github.jenly1314:zxing-lite:2.1.1'
+
+    // 华为扫码
+    implementation 'com.huawei.hms:scanplus:2.11.0.300'
+}

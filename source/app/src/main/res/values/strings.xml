@@ -1,0 +1,33 @@
+<resources>
+    <string name="app_name">RC</string>
+    <string name="action_desc">Control your phone remotely, including click, long click, and swipe.</string>
+    <string name="timeout">Connect to remote failed</string>
+    <string name="connecting">Connecting remote device…</string>
+    <string name="control_start_failed">Control command service failed</string>
+    <string name="name_required">Please input device name</string>
+    <string name="follow_start_failed">Stream service failed</string>
+    <string name="permission_required">Please grant permission and retry</string>
+    <string name="accessibility_message">Would you want to enable accessibility service?</string>
+    <string name="cancel">Cancel</string>
+    <string name="grant">Grant</string>
+    <string name="confirm">Confirm</string>
+    <string name="accessibility_required">Please allow RemoteControl to use accessibility service</string>
+    <string name="stop">Stop</string>
+    <string name="start">Start</string>
+    <string name="invalid_ip">Invalid IP address</string>
+    <string name="image_saved">Saved to album</string>
+    <string name="follow_command_failed">Follow command service failed</string>
+    <string name="tips_long_run">Please don\'t limit battery usage if you want to run this app for a long time</string>
+    <string name="toast_quality">Video quality is from 0 to 100</string>
+    <string name="toast_size">Minimum video size is 320</string>
+    <string name="toast_set_success">Set success</string>
+    <string name="edit">Edit</string>
+    <string name="message_delete">Sure to delete %s ?</string>
+    <string name="edit_device">Edit Device</string>
+    <string name="device_name">Device name</string>
+    <string name="server_ip">Server IP address</string>
+    <string name="save">Save</string>
+    <string name="follow">Follow</string>
+    <string name="add">Add</string>
+    <string name="setting">Setting</string>
+</resources>

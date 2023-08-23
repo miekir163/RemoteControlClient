@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/white"
+    android:keepScreenOn="true"
+    android:orientation="vertical">
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/white"
+        android:elevation="2dp"
+        android:gravity="center"
+        android:minHeight="56dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/setting"
+            android:layout_gravity="center"
+            android:textColor="@color/black_title"
+            android:textSize="18sp" />
+
+        <FrameLayout
+            android:id="@+id/ivClose"
+            android:layout_width="wrap_content"
+            android:layout_height="56dp"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:layout_gravity="center_vertical"
+            android:foreground="?android:selectableItemBackground">
+            <ImageView
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:scaleType="fitXY"
+                android:src="@drawable/ic_close"
+                app:tint="@color/black_title"
+                android:layout_gravity="center"/>
+        </FrameLayout>
+    </FrameLayout>
+
+    <EditText
+        android:id="@+id/etVideoQuality"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="16dp"
+        android:digits="0123456789"
+        android:gravity="start|center_vertical"
+        android:hint="@string/toast_quality"
+        android:inputType="number"
+        android:maxLength="3"
+        android:minHeight="48dp"
+        android:textColor="@color/black_text"
+        android:textSize="16sp"/>
+
+    <EditText
+        android:id="@+id/etVideoMaxSize"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="16dp"
+        android:digits="0123456789"
+        android:gravity="start|center_vertical"
+        android:hint="@string/toast_size"
+        android:inputType="number"
+        android:maxLength="4"
+        android:minHeight="48dp"
+        android:textColor="@color/black_text"
+        android:textSize="16sp" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnSet"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="16dp"
+        android:minHeight="56dp"
+        android:text="@string/save"
+        android:textColor="@color/white" />
+</LinearLayout>

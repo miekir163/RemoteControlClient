@@ -32,11 +32,9 @@ import org.zeromq.ZContext
 import org.zeromq.ZMQ
 import java.io.ByteArrayOutputStream
 import java.lang.Thread.UncaughtExceptionHandler
-import java.nio.ByteBuffer
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
-import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 
@@ -117,8 +115,13 @@ object ScreenManager {
     @Volatile
     var lastBitmap: Bitmap? = null
     @SuppressLint("WrongConstant")
+    @Volatile
+    var copying = false
     private fun createVirtualDisplay() {
         if (captureImageReader != null || virtualDisplay != null) {
+            if (copying) {
+                return
+            }
             var bitmap = Bitmap.createBitmap(displayWidth, displayHeight, Bitmap.Config.ARGB_8888)
             val listener = PixelCopy.OnPixelCopyFinishedListener { copyResult ->
                 when (copyResult) {
@@ -126,49 +129,52 @@ object ScreenManager {
                         // 图像相同不用传，省很多流量
                         // 且两秒内没有收到指令，就不要传了 && System.currentTimeMillis()-MessageReceiver.lastCmdMillis > 2_000L
                         if (bitmap.sameAs(lastBitmap)) {
-                            //L.e("图像相同")
-                            return@OnPixelCopyFinishedListener
-                        }
-                        lastBitmap?.recycle()
-                        lastBitmap = bitmap
+                            bitmap.recycle()
+                            L.e("图像相同")
+                        } else {
+                            lastBitmap?.recycle()
+                            lastBitmap = bitmap
 
-                        val screenMaxSize = Math.max(bitmap.width, bitmap.height)
-                        val settingMaxSize = KeyValue.videoMaxSize
-                        if (screenMaxSize > settingMaxSize) {
-                            // 需要压缩到指定尺寸
-                            var targetWidth = bitmap.width
-                            var targetHeight = bitmap.height
-                            if (targetWidth > targetHeight) {
-                                targetWidth = settingMaxSize
-                                val scale = bitmap.width * 1.0f / targetWidth
-                                targetHeight = (bitmap.height/scale).toInt()
-                            } else {
-                                targetHeight = settingMaxSize
-                                val scale = bitmap.height * 1.0f / targetHeight
-                                targetWidth = (bitmap.width / scale).toInt()
+                            val screenMaxSize = Math.max(bitmap.width, bitmap.height)
+                            val settingMaxSize = KeyValue.videoMaxSize
+                            if (screenMaxSize > settingMaxSize) {
+                                // 需要压缩到指定尺寸
+                                var targetWidth = bitmap.width
+                                var targetHeight = bitmap.height
+                                if (targetWidth > targetHeight) {
+                                    targetWidth = settingMaxSize
+                                    val scale = bitmap.width * 1.0f / targetWidth
+                                    targetHeight = (bitmap.height/scale).toInt()
+                                } else {
+                                    targetHeight = settingMaxSize
+                                    val scale = bitmap.height * 1.0f / targetHeight
+                                    targetWidth = (bitmap.width / scale).toInt()
+                                }
+                                if (targetWidth <= 0 || targetHeight <= 0) {
+                                    L.e("非法宽高：${targetWidth}, ${targetHeight}")
+                                    return@OnPixelCopyFinishedListener
+                                }
+                                bitmap = Bitmap.createScaledBitmap(bitmap, targetWidth, targetHeight, false)
                             }
-                            if (targetWidth <= 0 || targetHeight <= 0) {
-                                L.e("非法宽高：${targetWidth}, ${targetHeight}")
-                                return@OnPixelCopyFinishedListener
-                            }
-                            bitmap = Bitmap.createScaledBitmap(bitmap, targetWidth, targetHeight, false)
+
+                            val stream = ByteArrayOutputStream()
+                            bitmap.compress(Bitmap.CompressFormat.WEBP, KeyValue.videoQuality, stream)
+
+                            // 推送屏幕画面数据
+                            val screenData = stream.toByteArray()
+                            publishScreenData(screenData)
                         }
-
-                        val stream = ByteArrayOutputStream()
-                        bitmap.compress(Bitmap.CompressFormat.WEBP, KeyValue.videoQuality, stream)
-
-                        // 推送屏幕画面数据
-                        val screenData = stream.toByteArray()
-                        publishScreenData(screenData)
                     }
                     else -> {
                         L.e("Pixel copy failed with result $copyResult")
                     }
                 }
+                copying = false
             }
 
             try {
                 PixelCopy.request(captureImageReader?.surface!!, bitmap, listener, threadHandler!!)
+                copying = true
             } catch (e: Exception) {
                 L.e("copy exception: ${e.message}")
             }

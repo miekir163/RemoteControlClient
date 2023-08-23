@@ -1,7 +1,7 @@
 # Remote Control Client
 
 ## 简要说明
-需要配合[RemoteControlServer](https://github.com/miekir163/RemoteControlServer)服务器端使用。这是一个可以远程控制手机的应用，包括远程控制手机点击，长按，滑动。你可以下载[客户端APK](https://github.com/miekir163/RemoteControlOutput/blob/main/release/V1.0/rt_realease_v1.0.apk) 和 [服务器JAR包](https://github.com/miekir163/RemoteControlOutput/blob/main/release/V1.0/rt.jar)进行体验。
+需要配合[RemoteControlServer](https://github.com/miekir163/RemoteControlServer)服务器端使用。这是一个可以远程控制手机的应用，包括远程控制手机点击，长按，滑动。可以直接下载[客户端APK](https://github.com/miekir163/RemoteControlOutput/blob/main/release/V1.0/rt_realease_v1.0.apk) 和 [服务端JAR](https://github.com/miekir163/RemoteControlOutput/blob/main/release/V1.0/rt.jar) 进行体验！
 
 ## TODO
  - 身份认证

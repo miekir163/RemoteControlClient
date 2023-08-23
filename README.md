@@ -8,8 +8,9 @@ Working with [RemoteControlServer](https://github.com/miekir163/RemoteControlSer
  - Identity Authentication
  - More Languages Support
 
+ ## Support
+[Buy Author a Coffee](https://ko-fi.com/miekir)
+
 ## Screenshot
 <img src="https://github.com/miekir163/RemoteControlOutput/blob/main/screenshot/Screenshot_client_1.png?raw=true" />
 
-## Support
-[Buy Author a Coffee](https://ko-fi.com/miekir)

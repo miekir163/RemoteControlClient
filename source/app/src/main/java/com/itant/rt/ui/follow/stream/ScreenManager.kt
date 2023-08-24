@@ -32,9 +32,11 @@ import org.zeromq.ZContext
 import org.zeromq.ZMQ
 import java.io.ByteArrayOutputStream
 import java.lang.Thread.UncaughtExceptionHandler
+import java.nio.ByteBuffer
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 
@@ -56,8 +58,10 @@ object ScreenManager {
     val totalCountLiveData = MutableLiveData<Int>()
     val pushedCountLiveData = MutableLiveData<Int>()
     private const val MAX_COUNT = 10000
+
     @Volatile
     private var pushedCount = 0
+
     @Volatile
     private var totalCount = 0
 
@@ -67,7 +71,7 @@ object ScreenManager {
     /**
      * 是否已打开无障碍权限
      */
-    val accessibilityEnabled:Boolean
+    val accessibilityEnabled: Boolean
         get() {
             return ActionManager.service != null
         }
@@ -85,12 +89,14 @@ object ScreenManager {
     /**
      * 专门的一个线程池用于渲染视频流
      */
-    val renderExecutorService: ExecutorService =  Executors.newFixedThreadPool(2)
+    val renderExecutorService: ExecutorService = Executors.newFixedThreadPool(2)
 
     @Volatile
     private var publishStreamSocket: ZMQ.Socket? = null
+
     @Volatile
-    private var publishStreamContext:ZContext? = null
+    private var publishStreamContext: ZContext? = null
+
     @Volatile
     private var publishStreamUrl = ""
 
@@ -98,7 +104,7 @@ object ScreenManager {
      * 专门的子线程用于截屏回调
      */
     @Volatile
-    var threadHandler : Handler? = null
+    var threadHandler: Handler? = null
 
     @Volatile
     var mediaProjection: MediaProjection? = null
@@ -112,102 +118,139 @@ object ScreenManager {
      */
     @Volatile
     var captureImageReader: ImageReader? = null
+
     @Volatile
     var lastBitmap: Bitmap? = null
-    @SuppressLint("WrongConstant")
+
+    /**
+     * 是否正在拷贝Bitmap
+     */
     @Volatile
-    var copying = false
+    private var copying = false
+
+    /**
+     * 是否要追加最后一帧截图
+     */
+    @Volatile
+    private var lastFrameAppend = false
+
+    @SuppressLint("WrongConstant")
+    @Synchronized
     private fun createVirtualDisplay() {
         if (captureImageReader != null || virtualDisplay != null) {
-            if (copying) {
-                return
-            }
-            var bitmap = Bitmap.createBitmap(displayWidth, displayHeight, Bitmap.Config.ARGB_8888)
+            copying = true
+            val rawBitmap = Bitmap.createBitmap(displayWidth, displayHeight, Bitmap.Config.ARGB_8888)
             val listener = PixelCopy.OnPixelCopyFinishedListener { copyResult ->
+                var needRecycleRawBitmap = true
                 when (copyResult) {
                     PixelCopy.SUCCESS -> {
-                        // 图像相同不用传，省很多流量
-                        // 且两秒内没有收到指令，就不要传了 && System.currentTimeMillis()-MessageReceiver.lastCmdMillis > 2_000L
-                        if (bitmap.sameAs(lastBitmap)) {
-                            bitmap.recycle()
+                        if (rawBitmap.sameAs(lastBitmap)) {
+                            // 图像相同不用传，省很多流量
                             L.e("图像相同")
                         } else {
                             lastBitmap?.recycle()
-                            lastBitmap = bitmap
+                            lastBitmap = rawBitmap
+                            needRecycleRawBitmap = false
 
-                            val screenMaxSize = Math.max(bitmap.width, bitmap.height)
+                            val screenMaxSize = Math.max(rawBitmap.width, rawBitmap.height)
                             val settingMaxSize = KeyValue.videoMaxSize
+
+                            var scaledBitmap: Bitmap? = null
                             if (screenMaxSize > settingMaxSize) {
                                 // 需要压缩到指定尺寸
-                                var targetWidth = bitmap.width
-                                var targetHeight = bitmap.height
+                                var targetWidth = rawBitmap.width
+                                var targetHeight = rawBitmap.height
                                 if (targetWidth > targetHeight) {
                                     targetWidth = settingMaxSize
-                                    val scale = bitmap.width * 1.0f / targetWidth
-                                    targetHeight = (bitmap.height/scale).toInt()
+                                    val scale = rawBitmap.width * 1.0f / targetWidth
+                                    targetHeight = (rawBitmap.height/scale).toInt()
                                 } else {
                                     targetHeight = settingMaxSize
-                                    val scale = bitmap.height * 1.0f / targetHeight
-                                    targetWidth = (bitmap.width / scale).toInt()
+                                    val scale = rawBitmap.height * 1.0f / targetHeight
+                                    targetWidth = (rawBitmap.width / scale).toInt()
                                 }
                                 if (targetWidth <= 0 || targetHeight <= 0) {
                                     L.e("非法宽高：${targetWidth}, ${targetHeight}")
-                                    return@OnPixelCopyFinishedListener
+                                } else {
+                                    scaledBitmap = Bitmap.createScaledBitmap(rawBitmap, targetWidth, targetHeight, false)
                                 }
-                                bitmap = Bitmap.createScaledBitmap(bitmap, targetWidth, targetHeight, false)
                             }
 
                             val stream = ByteArrayOutputStream()
-                            bitmap.compress(Bitmap.CompressFormat.WEBP, KeyValue.videoQuality, stream)
+                            if (scaledBitmap != null) {
+                                scaledBitmap.compress(Bitmap.CompressFormat.WEBP, KeyValue.videoQuality, stream)
+                                scaledBitmap.recycle()
+                            } else {
+                                rawBitmap.compress(Bitmap.CompressFormat.WEBP, KeyValue.videoQuality, stream)
+                            }
 
                             // 推送屏幕画面数据
                             val screenData = stream.toByteArray()
                             publishScreenData(screenData)
                         }
                     }
+
                     else -> {
                         L.e("Pixel copy failed with result $copyResult")
                     }
                 }
-                copying = false
+
+                if (needRecycleRawBitmap) {
+                    rawBitmap.recycle()
+                }
+
+                if (lastFrameAppend) {
+                    lastFrameAppend = false
+                    createVirtualDisplay()
+                } else {
+                    copying = false
+                }
             }
 
             try {
-                PixelCopy.request(captureImageReader?.surface!!, bitmap, listener, threadHandler!!)
-                copying = true
+                PixelCopy.request(captureImageReader?.surface!!, rawBitmap, listener, threadHandler!!)
             } catch (e: Exception) {
+                copying = false
+                rawBitmap.recycle()
                 L.e("copy exception: ${e.message}")
             }
             L.e("end")
-            return
-        }
-
-        captureImageReader = ImageReader.newInstance(ScreenManager.displayWidth, ScreenManager.displayHeight, PixelFormat.RGBA_8888, 1)
-        if (mediaProjection == null && mProjectionIntent != null) {
-            try {
-                val mediaProjectionManager = GlobalContext.getContext().getSystemService(MediaProjectionManager::class.java)
-                mediaProjection = mediaProjectionManager.getMediaProjection(AppCompatActivity.RESULT_OK, ScreenManager.mProjectionIntent!!)
-            } catch (e: Exception) {
-                L.e(e.message)
-                mediaProjection = null
-                recycleCapture()
-            }
-        }
-
-        try {
-            ScreenManager.virtualDisplay = mediaProjection?.createVirtualDisplay(
-                "ScreenCapture",
+        } else {
+            captureImageReader = ImageReader.newInstance(
                 ScreenManager.displayWidth,
                 ScreenManager.displayHeight,
-                //ScreenUtils.getScreenDensity().toInt(),
-                Resources.getSystem().displayMetrics.densityDpi,
-                flags,
-                captureImageReader?.surface,
-                null,
-                ScreenManager.threadHandler
+                PixelFormat.RGBA_8888,
+                1
             )
-        } catch (e: Exception) {
-            recycleCapture()
+            if (mediaProjection == null && mProjectionIntent != null) {
+                try {
+                    val mediaProjectionManager = GlobalContext.getContext().getSystemService(MediaProjectionManager::class.java)
+                    mediaProjection = mediaProjectionManager.getMediaProjection(
+                        AppCompatActivity.RESULT_OK,
+                        ScreenManager.mProjectionIntent!!
+                    )
+                } catch (e: Exception) {
+                    L.e(e.message)
+                    mediaProjection = null
+                    recycleCapture()
+                }
+            }
+
+            try {
+                ScreenManager.virtualDisplay = mediaProjection?.createVirtualDisplay(
+                    "ScreenCapture",
+                    ScreenManager.displayWidth,
+                    ScreenManager.displayHeight,
+                    //ScreenUtils.getScreenDensity().toInt(),
+                    Resources.getSystem().displayMetrics.densityDpi,
+                    flags,
+                    captureImageReader?.surface,
+                    null,
+                    ScreenManager.threadHandler
+                )
+            } catch (e: Exception) {
+                recycleCapture()
+            }
         }
     }
 
@@ -299,15 +342,17 @@ object ScreenManager {
                 publishStreamSocket?.connect(publishStreamUrl)
             } catch (e: Exception) {
                 L.e(e.message)
-                AppUtils.killSelf(GlobalContext.getContext().getString(R.string.follow_start_failed))
+                AppUtils.killSelf(
+                    GlobalContext.getContext().getString(R.string.follow_start_failed)
+                )
             }
 
             imageExecutorService.submit(Runnable {
-                while(publishStreamSocket != null) {
-                    val timeElapse = System.currentTimeMillis()-lastImageMillis
+                while (publishStreamSocket != null) {
+                    val timeElapse = System.currentTimeMillis() - lastImageMillis
                     if (timeElapse < IMAGE_IDLE_MILLIS) {
                         try {
-                            Thread.sleep(IMAGE_IDLE_MILLIS-timeElapse)
+                            Thread.sleep(IMAGE_IDLE_MILLIS - timeElapse)
                         } catch (e: Exception) {
                             L.e(e.message)
                         }
@@ -317,16 +362,22 @@ object ScreenManager {
                     lastImageMillis = System.currentTimeMillis()
                     // 没打开无障碍权限或者有控制指令都要推流
                     if (!accessibilityEnabled || !MessageReceiver.isControlLeave()) {
-                        createVirtualDisplay()
+                        if (copying) {
+                            lastFrameAppend = true
+                        } else {
+                            createVirtualDisplay()
+                        }
                     } else {
-                        // 不需要当前设备推流的时候停止录屏，提高性能
-                        mediaProjection?.stop()
-                        mediaProjection = null
-                        recycleCapture()
-                        try {
-                            Thread.sleep(2000)
-                        } catch (e: Exception) {
-                            L.e(e.message)
+                        if (!copying) {
+                            try {
+                                Thread.sleep(2000)
+                            } catch (e: Exception) {
+                                L.e(e.message)
+                            }
+                            // 不需要当前设备推流的时候停止录屏，提高性能
+                            mediaProjection?.stop()
+                            mediaProjection = null
+                            recycleCapture()
                         }
                     }
                 }
